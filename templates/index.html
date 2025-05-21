@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+        <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            min-height: 95vh;
+        }
+        .main-page{
+            margin:10px;
+            display: flex;
+            color: #333;
+            min-height: 90vh;
+        }
+
+        .sidebar {
+            color: #333;
+            width: 300px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            margin-top:20px;
+            margin-left: 10px;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+
+        .sidebar .file-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 5px 0 8px rgba(56, 55, 55, 0.1);
+        }
+
+        .sidebar .file-list div {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #890af0;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-size: 1rem;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar .file-list div svg {
+            cursor: pointer;
+            margin-left: 10px;
+            fill: #d63031;
+            transition: transform 0.2s;
+        }
+
+        .sidebar .file-list div svg:hover {
+            transform: scale(1.2);
+        }
+
+        .custom-file-input {
+            display: block;
+            margin: 10px 0;
+            padding: 12px;
+            background: #890af0;
+            color: #ffffff;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 15px;
+            border: none;
+            transition: background 0.3s ease;
+        }
+
+        .custom-file-input:hover {
+            background: #b074ff;
+        }
+
+        .sidebar button {
+            padding: 10px;
+            font-size: 1rem;
+            background: #890af0;
+            color: #ffffff;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .sidebar button:hover {
+            background: #c774ff;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .chat-window {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #b2bec3;
+            overflow: auto;
+            position: relative;
+        }
+
+        #chatWindow {
+            position: absolute;
+            height: 80%;
+            width: 100%;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .chat-message {
+            margin: 10px 0;
+            display: flex;
+        }
+
+        .chat-message.user {
+            justify-content: flex-end;
+        }
+
+        .chat-message .bubble {
+            max-width: 70%;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 1rem;
+        }
+
+        .chat-message.user .bubble {
+            background: #890af0;
+            color: #ffffff;
+        }
+
+        .chat-message.bot .bubble {
+            background: #e4dfe9;
+            color: #333;
+        }
+
+        .input-section {
+            display: flex;
+            margin-top: 10px;
+        }
+
+        .input-section input {
+            flex: 1;
+            padding: 12px;
+            font-size: 1rem;
+            border: 1px solid #bcb2c3;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .input-section button {
+            padding: 12px 80px;
+            font-size: 1rem;
+            background: #890af0;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .input-section button:hover {
+            background: #bf71ff;
+        }
+
+        .truncate-flex {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <h2>Ask queries based on the uploaded documents</h2>
+    <div class="main-page">
+    <div class="sidebar">
+        
+        <div id="uploadedDocListDiv" class="file-list"></div>
+        <label class="custom-file-input" for="docUpload">Choose Document</label>
+        <input type="file" id="docUpload" name="files" multiple accept=".pdf, .docx, .xlsx, .csv, .txt"
+            style="display: none;" />
+    </div>
+    <div class="main">
+        <div class="chat-window">
+            <div id="chatWindow">
+
+            </div>
+        </div>
+        <div class="input-section">
+            <input type="text" id="queryInput" placeholder="Type your query..." />
+            <button id="sendQuery">Send</button>
+        </div>
+    </div>
+    </div>
+    <script>
+        const docUpload = document.getElementById("docUpload");
+        const uploadedFileList = document.getElementById("uploadedFileList");
+
+        docUpload.addEventListener("change", function (event) {
+            const formData = new FormData();
+
+            // Upload files
+                        // Loop through all selected files and append them to formData
+            for (let i = 0; i < docUpload.files.length; i++) {
+                formData.append("files", docUpload.files[i]);
+            }
+            fetch("http://127.0.0.1:5000/upload", {
+                method: "POST",
+                body: formData,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        alert(data.message);
+                        selectedFiles = [];
+                        fetchFiles();
+                    }
+                })
+                .catch(error => alert("Error uploading files: " + error));
+
+            event.target.value = ''; // Clear the file input value
+        });
+
+        function fetchFiles() {
+            fetch("http://127.0.0.1:5000/files", { method: "GET" })
+                .then(response => response.json())
+                .then(data => {
+                    if (data && Array.isArray(data.files)) {
+                        console.log("files === ", data.files)
+                        // renderUploadedFileList(data.files);
+                    } else {
+                        console.error("Unexpected response format", data);
+                    }
+                })
+                .catch(error => console.error("Error fetching files:", error));
+        }
+
+        function renderUploadedFileList(files) {
+            uploadedFileList.innerHTML = ""; // Clear existing list
+            files.forEach(file => {
+                const fileItem = document.createElement("div");
+                fileItem.title = file.name;
+                fileItem.style.display = "flex"; // Ensure alignment
+                fileItem.style.alignItems = "center"; // Center align
+
+                // Add checkbox image with dynamic state based on file.deleted
+                const checkbox = document.createElement("img");
+                // Dynamically set the checkbox image based on file.deleted (1: checked, 0: unchecked)
+                checkbox.src = file.deleted === 1 || file.deleted === true // Check if deleted is 1 or true
+                    ? "{{ url_for('static', filename='images/unchecked.png') }}" // Unchecked if deleted
+                    : "{{ url_for('static', filename='images/checked.png') }}"; // Checked if not deleted
+                checkbox.alt = file.deleted === 1 || file.deleted === true ? "Unchecked" : "Checked"; // Set alt text accordingly
+                checkbox.style.cursor = "pointer";
+                checkbox.style.marginRight = "10px";
+                checkbox.setAttribute("data-checked", file.deleted === 1 || file.deleted === true ? "false" : "true"); // Set initial state based on deleted field
+                checkbox.width = 16; // Set width for consistency
+                checkbox.height = 16; // Set height for consistency
+                checkbox.addEventListener("click", async () => {
+                    const isChecked = checkbox.getAttribute("data-checked") === "true";
+                    const newState = isChecked ? "false" : "true";
+                    const deleted = newState === "true" ? 1 : 0;
+
+                    // Update checkbox visually
+                    if (newState === "true") {
+                        checkbox.src = "{{ url_for('static', filename='images/checked.png') }}";
+                        checkbox.alt = "Checked";
+                    } else {
+                        checkbox.src = "{{ url_for('static', filename='images/unchecked.png') }}";
+                        checkbox.alt = "Unchecked";
+                    }
+                    checkbox.setAttribute("data-checked", newState);
+
+                    // Make API call to soft delete or restore the file
+                    try {
+                        const response = await fetch(`/soft_delete/${file.id}`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({ deleted: !deleted })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            console.log(result.message); // Success message
+                            file.deleted = deleted; // Update the file's state in the list
+                        } else {
+                            console.error(result.error); // Error message
+                            // Restore checkbox to previous state if error occurs
+                            checkbox.src = isChecked ? "{{ url_for('static', filename='images/unchecked.png') }}" : "{{ url_for('static', filename='images/checked.png') }}";
+                            checkbox.alt = isChecked ? "Unchecked" : "Checked";
+                            checkbox.setAttribute("data-checked", isChecked ? "false" : "true");
+                        }
+                    } catch (error) {
+                        console.error('Error toggling soft delete:', error);
+                        // Restore checkbox to previous state if error occurs
+                        checkbox.src = isChecked ? "{{ url_for('static', filename='images/unchecked.png') }}" : "{{ url_for('static', filename='images/checked.png') }}";
+                        checkbox.alt = isChecked ? "Unchecked" : "Checked";
+                        checkbox.setAttribute("data-checked", isChecked ? "false" : "true");
+                    }
+                });
+
+                const fileName = document.createElement("span");
+                fileName.textContent = file.name;
+                fileName.classList.add('truncate-flex');
+
+                const deleteIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                deleteIcon.setAttribute("width", "16");
+                deleteIcon.setAttribute("height", "16");
+                deleteIcon.setAttribute("viewBox", "0 0 24 24");
+                deleteIcon.innerHTML = `
+        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+        `;
+                deleteIcon.style.cursor = "pointer";
+                deleteIcon.style.marginLeft = "auto"; // Push delete icon to the right
+                deleteIcon.addEventListener("click", () => deleteFile(file.id));
+
+                fileItem.appendChild(checkbox);
+                fileItem.appendChild(fileName);
+                fileItem.appendChild(deleteIcon);
+                uploadedFileList.appendChild(fileItem);
+            });
+        }
+
+
+
+        fetchFiles();
+    </script>
+</body>
+</html>

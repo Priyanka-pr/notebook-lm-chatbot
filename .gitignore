@@ -1,0 +1,15 @@
+#Chroma Database folder
+chroma_db/
+
+#python virtual environment folder
+my_chatbot/
+
+#Files upload folder
+uploads/
+
+#pychache
+__pycache__/
+.vscode/
+
+#env file
+.env/
