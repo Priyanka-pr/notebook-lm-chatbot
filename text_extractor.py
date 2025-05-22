@@ -2,7 +2,32 @@
 
 import os
 from markitdown import MarkItDown
+from PageContentExtractor import PageContentExtractor
 
+
+def extract_text_from_file_2(file_path) :
+    # Initialize the extractor
+    extractor = PageContentExtractor(languages=['en'])  # Add more languages as needed
+    
+    # Process a single page (if you have a page object)
+    # page_result = extractor.extract_page_content(page, page_number=1)
+    
+    # Or process an entire PDF file
+    all_results = extractor.process_pdf_file(file_path)
+    
+    # Display results
+    for result in all_results:
+        print("=" * 50)
+        print(extractor.get_page_summary(result))
+        print("-" * 30)
+        
+        if result['total_content']:
+            print("Extracted Content:")
+            print(result['total_content'][:500] + "..." if len(result['total_content']) > 500 else result['total_content'])
+        else:
+            print("No content extracted from this page")
+            
+    return all_results
 
 def extract_text_from_file(file_path) : 
     md = MarkItDown()

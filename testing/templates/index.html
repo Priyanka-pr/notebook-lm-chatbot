@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Chatbot & File Upload</title>
     <style>
         * {
             box-sizing: border-box;
@@ -14,44 +15,36 @@
             background-color: #f4f4f9;
             margin: 0;
             padding: 0;
-            min-height: 95vh;
-            text-align: center;
-        }
-        .main-page{
-            margin:10px;
             display: flex;
+            min-height: 100vh;
             color: #333;
-            min-height: 90vh;
         }
 
         .sidebar {
+            background: #dfe6e9;
             color: #333;
             width: 300px;
             padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
-        }
-        .list-heading{
-            background-color: #4aa4e6;
-            color: #fff;
-            padding: 10px 15px;
-            margin: -7px -10px;
+            border-right: 1px solid #b2bec3;
         }
 
-        h2 {
-            margin-top:20px;
-            margin-left: 10px;
-            margin-bottom: 10px;
+        .sidebar h2 {
+            margin-bottom: 20px;
             font-size: 1.5rem;
+            color: #0984e3;
         }
 
         .sidebar .file-list {
             flex: 1;
             overflow-y: auto;
             margin-bottom: 20px;
+            background: #ffffff;
             border-radius: 8px;
             padding: 10px;
-            box-shadow: 5px 0 8px rgba(56, 55, 55, 0.1);
+            border: 1px solid #b2bec3;
         }
 
         .sidebar .file-list div {
@@ -59,7 +52,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 8px 12px;
-            background: #4aa4e6;
+            background: #74b9ff;
             border-radius: 5px;
             margin-bottom: 5px;
             font-size: 1rem;
@@ -67,7 +60,6 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            margin-top: 18px;
         }
 
         .sidebar .file-list div svg {
@@ -84,33 +76,33 @@
         .custom-file-input {
             display: block;
             margin: 10px 0;
-            padding: 12px;
-            background: #4aa4e6;
+            padding: 10px;
+            background: #0984e3;
             color: #ffffff;
             text-align: center;
             cursor: pointer;
-            border-radius: 15px;
+            border-radius: 5px;
             border: none;
             transition: background 0.3s ease;
         }
 
         .custom-file-input:hover {
-            background: #8dcffff8;
+            background: #74b9ff;
         }
 
         .sidebar button {
             padding: 10px;
             font-size: 1rem;
-            background: #4aa4e6;
+            background: #0984e3;
             color: #ffffff;
             border: none;
-            border-radius: 15px;
+            border-radius: 5px;
             cursor: pointer;
             transition: background 0.3s ease;
         }
 
         .sidebar button:hover {
-            background: #8dcffff8;
+            background: #74b9ff;
         }
 
         .main {
@@ -133,7 +125,7 @@
 
         #chatWindow {
             position: absolute;
-            height: 80%;
+            height: 100%;
             width: 100%;
             top: 0;
             left: 0;
@@ -158,15 +150,13 @@
         }
 
         .chat-message.user .bubble {
-            background: #4aa4e6;
+            background: #0984e3;
             color: #ffffff;
-            text-align: right;
         }
 
         .chat-message.bot .bubble {
-            background: #e4dfe9;
+            background: #dfe6e9;
             color: #333;
-            text-align: left;
         }
 
         .input-section {
@@ -178,15 +168,15 @@
             flex: 1;
             padding: 12px;
             font-size: 1rem;
-            border: 1px solid #bcb2c3;
+            border: 1px solid #b2bec3;
             border-radius: 5px;
             margin-right: 10px;
         }
 
         .input-section button {
-            padding: 12px 80px;
+            padding: 12px;
             font-size: 1rem;
-            background: #4aa4e6;
+            background: #0984e3;
             color: #ffffff;
             border: none;
             border-radius: 5px;
@@ -195,7 +185,7 @@
         }
 
         .input-section button:hover {
-            background: #bf71ff;
+            background: #74b9ff;
         }
 
         .truncate-flex {
@@ -204,52 +194,18 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-
-        #loader-wrapper{
-            text-align: center;
-            display: none;
-            position: absolute;
-            left: 50%;
-            margin-top: 27px;
-            z-index: 999;
-        }
-
-        .loader {
-            margin: auto;
-            border: 8px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 8px solid #d5a5fc;
-            width: 50px;
-            height: 50px;
-            -webkit-animation: spin 2s linear infinite; /* Safari */
-            animation: spin 2s linear infinite;
-        }
-
-        /* Safari */
-        @-webkit-keyframes spin {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
-            }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
+
 <body>
-    <h2>Ask queries based on the uploaded documents</h2>
-    <div id="loader-wrapper"><div class="loader"></div><p>Uploading files</p></div>
-    
-    <div class="main-page">
     <div class="sidebar">
-        
-        <div id="uploadedDocListDiv" class="file-list">
-            <p class="list-heading">Uploaded File List :</p>
-        </div>
-        <label class="custom-file-input" for="docUpload">Choose Document</label>
-        <input type="file" id="docUpload" name="files" multiple accept=".pdf, .docx, .xlsx, .csv, .txt"
+        <h2>Uploaded Files</h2>
+        <div id="uploadedFileList" class="file-list"></div>
+        <!-- <div id="fileList" class="file-list"></div> -->
+        <label class="custom-file-input" for="fileInput">Choose Files</label>
+        <input type="file" id="fileInput" name="files" multiple accept=".pdf, .docx, .xlsx, .csv, .txt"
             style="display: none;" />
+        <button id="uploadFiles">Upload Files</button>
     </div>
     <div class="main">
         <div class="chat-window">
@@ -262,18 +218,26 @@
             <button id="sendQuery">Send</button>
         </div>
     </div>
-    </div>
+    <!-- <div class="sidebar">
+        <h2>UPloaded Files</h2>
+        <div id="uploadedFileList" class="file-list"></div>
+    </div> -->
+
     <script>
-        const docUpload = document.getElementById("docUpload");
-        const uploadedDocListDiv = document.getElementById("uploadedDocListDiv");
-        const loader= document.getElementById("loader-wrapper");
+        const fileInput = document.getElementById("fileInput");
+        const fileListDiv = document.getElementById("fileList");
+        const uploadFilesButton = document.getElementById("uploadFiles");
         const chatWindow = document.getElementById("chatWindow");
         const queryInput = document.getElementById("queryInput");
         const sendQueryButton = document.getElementById("sendQuery");
+        const uploadedFileList = document.getElementById("uploadedFileList");
+
         let session_id = null;
 
 
-                // Function to create a session and store the session_id
+        let selectedFiles = [];
+
+        // Function to create a session and store the session_id
         function createSession() {
             fetch("http://127.0.0.1:5000/create_session", {
                 method: "GET",
@@ -288,16 +252,42 @@
                 });
         }
 
-        
-        docUpload.addEventListener("change", function (event) {
+        // Call the function to create a session when the page loads
+        createSession();
+
+        function createFileItem(fileName, index) {
+            const fileItem = document.createElement("div");
+            fileItem.title = fileName;
+            fileItem.textContent = fileName;
+            const removeIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            removeIcon.setAttribute("width", "16");
+            removeIcon.setAttribute("height", "16");
+            removeIcon.setAttribute("viewBox", "0 0 24 24");
+            removeIcon.innerHTML = '<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>';
+            removeIcon.addEventListener("click", () => {
+                selectedFiles.splice(index, 1);
+                renderFileList();
+            });
+            fileItem.appendChild(removeIcon);
+            return fileItem;
+        }
+
+        function renderFileList() {
+            fileListDiv.innerHTML = "";
+            selectedFiles.forEach((file, index) => {
+                const fileItem = createFileItem(file.name, index);
+                fileListDiv.appendChild(fileItem);
+            });
+        }
+
+        fileInput.addEventListener("change", function (event) {
             const formData = new FormData();
 
-            // Upload files
-                        // Loop through all selected files and append them to formData
-            for (let i = 0; i < docUpload.files.length; i++) {
-                formData.append("files", docUpload.files[i]);
+            // Loop through all selected files and append them to formData
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append("files", fileInput.files[i]);
             }
-            loader.style.display = "block";
+
             fetch("http://127.0.0.1:5000/upload", {
                 method: "POST",
                 body: formData,
@@ -308,25 +298,90 @@
                         alert(data.error);
                     } else {
                         alert(data.message);
-                        loader.style.display = "none";
+                        selectedFiles = [];
+                        // renderFileList(); // Uncomment if you are rendering a file list
                         fetchFiles();
                     }
                 })
-                .catch(error => {
-                    alert("Error uploading files: " + error);
-                    loader.style.display = "none";
-                });
+                .catch(error => alert("Error uploading files: " + error));
 
             event.target.value = ''; // Clear the file input value
         });
+
+
+        uploadFilesButton.addEventListener("click", function () {
+            if (selectedFiles.length === 0) return alert("No files selected.");
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => formData.append("files", file));
+
+            fetch("http://127.0.0.1:5000/upload", {
+                method: "POST",
+                body: formData,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        alert(data.message);
+                        selectedFiles = [];
+                        renderFileList();
+                        fetchFiles();
+                    }
+                })
+                .catch(error => alert("Error uploading files: " + error));
+        });
+
+        function sendQuery() {
+            const query = queryInput.value;
+            if (!query || !session_id) return;
+
+            const userMessage = document.createElement("div");
+            userMessage.className = "chat-message user";
+            userMessage.innerHTML = `<div class="bubble">${query}</div>`;
+            chatWindow.appendChild(userMessage);
+
+            fetch("http://127.0.0.1:5000/query", {
+                method: "POST",
+                body: JSON.stringify({ query, session_id }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const botMessage = document.createElement("div");
+                    botMessage.className = "chat-message bot";
+                    botMessage.innerHTML = `<div class="bubble">${data.answer || data.error}</div>`;
+                    chatWindow.appendChild(botMessage);
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                })
+                .catch(error => {
+                    const errorMessage = document.createElement("div");
+                    errorMessage.className = "chat-message bot";
+                    errorMessage.innerHTML = `<div class="bubble">Error: ${error}</div>`;
+                    chatWindow.appendChild(errorMessage);
+                });
+
+            queryInput.value = "";
+        }
+
+        sendQueryButton.addEventListener("click", sendQuery);
+
+        queryInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                sendQuery();
+            }
+        });
+
+
 
         function fetchFiles() {
             fetch("http://127.0.0.1:5000/files", { method: "GET" })
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data);
                     if (data && Array.isArray(data.files)) {
-                        console.log("files === ", data.files)
                         renderUploadedFileList(data.files);
                     } else {
                         console.error("Unexpected response format", data);
@@ -336,14 +391,10 @@
         }
 
         function renderUploadedFileList(files) {
-            console.log("filees ::=== ", files)
-            // uploadedDocListDiv.innerHTML = ""; // Clear existing list
+            uploadedFileList.innerHTML = ""; // Clear existing list
             files.forEach(file => {
                 const fileItem = document.createElement("div");
-                fileItem.setAttribute("id", file.id)
                 fileItem.title = file.name;
-                fileItem.style.backgroundColor = "#ffffff";
-                fileItem.style.color = "#000000";  
                 fileItem.style.display = "flex"; // Ensure alignment
                 fileItem.style.alignItems = "center"; // Center align
 
@@ -376,7 +427,7 @@
 
                     // Make API call to soft delete or restore the file
                     try {
-                        const response = await fetch(`/delete_file/${file.id}`, {
+                        const response = await fetch(`/soft_delete/${file.id}`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json"
@@ -421,55 +472,30 @@
                 fileItem.appendChild(checkbox);
                 fileItem.appendChild(fileName);
                 fileItem.appendChild(deleteIcon);
-                uploadedDocListDiv.appendChild(fileItem);
+                uploadedFileList.appendChild(fileItem);
             });
         }
 
-        function sendQuery() {
-            const query = queryInput.value;
-            if (!query || !session_id) return;
 
-            const userMessage = document.createElement("div");
-            userMessage.className = "chat-message user";
-            userMessage.innerHTML = `<div class="bubble">${query}</div>`;
-            chatWindow.appendChild(userMessage);
 
-            fetch("http://127.0.0.1:5000/query", {
-                method: "POST",
-                body: JSON.stringify({ query, session_id }),
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            })
+        function deleteFile(fileId) {
+            fetch(`http://127.0.0.1:5000/hard_delete/${fileId}`, { method: "DELETE" })
                 .then(response => response.json())
                 .then(data => {
-                    const botMessage = document.createElement("div");
-                    botMessage.className = "chat-message bot";
-                    botMessage.innerHTML = `<div class="bubble">${data.answer || data.error}</div>`;
-                    chatWindow.appendChild(botMessage);
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                    if (data.success) {
+                        fetchFiles()
+                    } else {
+                        console.error("Error deleting file:", data);
+                    }
                 })
-                .catch(error => {
-                    const errorMessage = document.createElement("div");
-                    errorMessage.className = "chat-message bot";
-                    errorMessage.innerHTML = `<div class="bubble">Error: ${error}</div>`;
-                    chatWindow.appendChild(errorMessage);
+                .catch(error => console.error("Error deleting file:", error))
+                .finally(() => {
+                    fetchFiles()
                 });
-
-            queryInput.value = "";
         }
 
-        sendQueryButton.addEventListener("click", sendQuery);
-
-        queryInput.addEventListener("keydown", function (event) {
-            if (event.key === "Enter") {
-                sendQuery();
-            }
-        });
-
-        // Call the function to create a session when the page loads
-        createSession();
-        fetchFiles();
+        fetchFiles(); // Initial fetch on page load
     </script>
 </body>
+
 </html>

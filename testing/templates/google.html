@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Drive Picker Example</title>
+</head>
+<body>
+    <button id="pickFile">Select from Google Drive</button>
+
+    <!-- Add the Google API Loader script -->
+    <script type="text/javascript" src="https://apis.google.com/js/api.js"></script>
+    <script type="text/javascript" src="https://accounts.google.com/gsi/client"></script>
+
+    <script>
+        // Replace these values with your actual Google Cloud credentials
+        const CLIENT_ID = 'YOUR_CLIENT_ID';
+        const API_KEY = 'YOUR_API_KEY';
+        const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+
+        let tokenClient;
+        let pickerInited = false;
+        let gisInited = false;
+
+        function initializePicker() {
+            // Initialize the tokenClient
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPE,
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        createPicker(tokenResponse.access_token);
+                    }
+                },
+            });
+            gisInited = true;
+        }
+
+        document.getElementById('pickFile').addEventListener('click', () => {
+            // Request an access token
+            tokenClient.requestAccessToken();
+        });
+
+        function createPicker(token) {
+            const picker = new google.picker.PickerBuilder()
+                .addView(google.picker.ViewId.DOCS)
+                .setOAuthToken(token)
+                .setDeveloperKey(API_KEY)
+                .setCallback(pickerCallback)
+                .build();
+            picker.setVisible(true);
+        }
+
+        function pickerCallback(data) {
+            if (data.action === google.picker.Action.PICKED) {
+                const fileId = data[google.picker.Response.DOCUMENTS][0].id;
+                const fileName = data[google.picker.Response.DOCUMENTS][0].name;
+                console.log('Selected file:', fileName, 'with ID:', fileId);
+                
+                // Here you can send the fileId to your backend for processing
+                processFile(fileId);
+            }
+        }
+
+        function processFile(fileId) {
+            // Send fileId to your backend
+            fetch('/process-file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fileId: fileId })
+            })
+            .then(response => response.json())
+            .then(data => console.log('File processed:', data))
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Load the Google Picker API
+        function loadPicker() {
+            gapi.load('picker', () => {
+                pickerInited = true;
+            });
+        }
+
+        // Initialize the Google Picker
+        window.onload = () => {
+            initializePicker();
+            loadPicker();
+        };
+    </script>
+</body>
+</html>
