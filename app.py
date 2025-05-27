@@ -5,11 +5,21 @@ import uuid
 from ChromaDBManager import ChromaDBManager;
 import json
 from dotenv import load_dotenv
-
+from OllamaElasticsearchManager import OllamaElasticsearchManager
+from config import Config
 
 load_dotenv()
 
-os.environ["OPENAI_API_KEY"]= os.getenv("OPENAI_API_KEY")
+
+es_manager = OllamaElasticsearchManager(
+        es_url=Config.ELASTICURL,
+        es_username=Config.ELASTICUSER,
+        es_password=Config.ELASTICPASS,
+        ollama_host=Config.RUNPOD,
+        llm_model=Config.MODEL
+    )
+
+# os.environ["OPENAI_API_KEY"]= os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 CORS(app)  # To handle CORS if frontend and backend are on different servers
@@ -26,8 +36,6 @@ CHROMA_DB_FOLDER = os.path.join(os.getcwd(), 'chroma_db')
 collection_name  = 'ca17be90-b943-46a6-82aa-c118fd9e14c4_embedding'
 aiClient = ChromaDBManager(persist_directory=CHROMA_DB_FOLDER,collection_name=collection_name)
 files=[]
-
-
 
 # Check if the file is allowed
 def allowed_file(filename):
@@ -74,7 +82,7 @@ def upload_files():
             
             try:
                 # Process the file with aiClient
-                aiClient.genrate_text_chunks(os.path.join(os.getcwd(), file_path), file_id)
+                es_manager.generate_text_chunks(os.path.join(os.getcwd(), file_path), file_id, "rag_docs_elastic_ollama")
             except Exception as e:
                 print(f'Error processing file {filename}: {e}')
     
@@ -130,8 +138,8 @@ def create_session():
     return jsonify({'session_id': session_id})
 
 # Route to soft delete a file (set 'deleted' metadata)
-@app.route('/delete_file/<file_id>', methods=['POST'])
-def delete_file(file_id):
+@app.route('/soft_delete/<file_id>', methods=['POST'])
+def soft_delete(file_id):
     deleted = request.json.get('deleted', True)  # default to True for deletion
     # Set soft delete using ChromaDBManager
     try:
@@ -142,6 +150,24 @@ def delete_file(file_id):
                 file['deleted'] = True if deleted else False
                 break
         return jsonify({'message': f'File {file_id} soft deleted' if deleted else f'File {file_id} restored'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+# Route to hard delete a file (permanently remove it)
+@app.route('/hard_delete/<file_id>', methods=['DELETE'])
+def hard_delete(file_id):
+    try:
+        # Delete the file physically from the file system
+        file_to_delete = next((file for file in files if file['id'] == file_id), None)
+        if file_to_delete:
+            os.remove(file_to_delete['path'])
+            files.remove(file_to_delete)
+            # Hard delete from ChromaDB
+            aiClient.hard_delete_document(file_id, collection_name)
+            return jsonify({'message': f'File {file_id} hard deleted'}), 200
+        else:
+            return jsonify({'error': f'File {file_id} not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 

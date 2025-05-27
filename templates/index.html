@@ -51,7 +51,8 @@
             margin-bottom: 20px;
             border-radius: 8px;
             padding: 10px;
-            box-shadow: 5px 0 8px rgba(56, 55, 55, 0.1);
+            /* box-shadow: 5px 0 8px rgba(56, 55, 55, 0.1); */
+            border: 3px solid #006a8a1f;
         }
 
         .sidebar .file-list div {
@@ -133,7 +134,7 @@
 
         #chatWindow {
             position: absolute;
-            height: 80%;
+            /* height: 80%; */
             width: 100%;
             top: 0;
             left: 0;
@@ -245,7 +246,7 @@
     <div class="sidebar">
         
         <div id="uploadedDocListDiv" class="file-list">
-            <p class="list-heading">Uploaded File List :</p>
+            <!-- <p class="list-heading">Uploaded File List :</p> -->
         </div>
         <label class="custom-file-input" for="docUpload">Choose Document</label>
         <input type="file" id="docUpload" name="files" multiple accept=".pdf, .docx, .xlsx, .csv, .txt"
@@ -336,8 +337,9 @@
         }
 
         function renderUploadedFileList(files) {
+        
             console.log("filees ::=== ", files)
-            // uploadedDocListDiv.innerHTML = ""; // Clear existing list
+            uploadedDocListDiv.innerHTML = ""; // Clear existing list
             files.forEach(file => {
                 const fileItem = document.createElement("div");
                 fileItem.setAttribute("id", file.id)
@@ -376,7 +378,7 @@
 
                     // Make API call to soft delete or restore the file
                     try {
-                        const response = await fetch(`/delete_file/${file.id}`, {
+                        const response = await fetch(`/soft_delete/${file.id}`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json"
@@ -402,7 +404,6 @@
                         checkbox.setAttribute("data-checked", isChecked ? "false" : "true");
                     }
                 });
-
                 const fileName = document.createElement("span");
                 fileName.textContent = file.name;
                 fileName.classList.add('truncate-flex');
@@ -467,6 +468,22 @@
             }
         });
 
+
+        function deleteFile(fileId) {
+            fetch(`http://127.0.0.1:5000/hard_delete/${fileId}`, { method: "DELETE" })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        fetchFiles()
+                    } else {
+                        console.error("Error deleting file:", data);
+                    }
+                })
+                .catch(error => console.error("Error deleting file:", error))
+                .finally(() => {
+                    fetchFiles()
+                });
+        }
         // Call the function to create a session when the page loads
         createSession();
         fetchFiles();

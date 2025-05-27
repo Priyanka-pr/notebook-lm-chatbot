@@ -14,7 +14,7 @@ from sentence_transformers import SentenceTransformer
 import torch
 from datetime import datetime
 
-class PageContentExtractor:
+class PageContentExtractorNew:
     def __init__(self, 
                  languages=['en'], 
                  chroma_db_path="./chroma_db",
@@ -49,6 +49,21 @@ class PageContentExtractor:
         # Initialize ChromaDB
         self.chroma_client = chromadb.PersistentClient(path=chroma_db_path)
         self.collection_name = collection_name
+        
+        # Get embedding dimensions for consistency
+        sample_text_embedding = self.text_model.encode("test", convert_to_tensor=False)
+        self.text_embedding_dim = len(sample_text_embedding)
+        
+        if self.image_model is not None:
+            # Get CLIP embedding dimension
+            test_image = Image.new('RGB', (224, 224), color='white')
+            test_embedding = self.generate_image_embedding(test_image)
+            self.image_embedding_dim = len(test_embedding) if test_embedding else self.text_embedding_dim
+        else:
+            self.image_embedding_dim = self.text_embedding_dim
+        
+        print(f"Text embedding dimension: {self.text_embedding_dim}")
+        print(f"Image embedding dimension: {self.image_embedding_dim}")
         
         # Create or get collection
         try:
@@ -90,9 +105,26 @@ class PageContentExtractor:
             print(f"Error generating image embedding: {str(e)}")
             return []
     
+    def pad_or_truncate_embedding(self, embedding: List[float], target_dim: int) -> List[float]:
+        """Ensure embedding has the correct dimension"""
+        if not embedding:
+            return []
+        
+        if len(embedding) == target_dim:
+            return embedding
+        elif len(embedding) > target_dim:
+            # Truncate
+            return embedding[:target_dim]
+        else:
+            # Pad with zeros
+            return embedding + [0.0] * (target_dim - len(embedding))
+    
     def image_to_base64(self, image: Image.Image) -> str:
         """Convert PIL Image to base64 string"""
         buffer = io.BytesIO()
+        # Ensure image is in RGB mode to avoid alpha channel issues
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
         image.save(buffer, format='PNG')
         img_str = base64.b64encode(buffer.getvalue()).decode()
         return img_str
@@ -106,13 +138,22 @@ class PageContentExtractor:
                         content: str, 
                         embedding: List[float], 
                         metadata: Dict, 
-                        content_id: str):
+                        content_id: str,
+                        content_type: str = 'text'):
         """Save content and embedding to ChromaDB"""
         if not embedding:
             print(f"Warning: Empty embedding for content ID {content_id}")
             return
         
         try:
+            # Ensure embedding has correct dimension based on content type
+            target_dim = self.text_embedding_dim if content_type == 'text' else self.text_embedding_dim
+            embedding = self.pad_or_truncate_embedding(embedding, target_dim)
+            
+            if not embedding:
+                print(f"Warning: Could not fix embedding dimension for content ID {content_id}")
+                return
+            
             self.collection.add(
                 documents=[content],
                 embeddings=[embedding],
@@ -179,7 +220,7 @@ class PageContentExtractor:
                     text_id = self.generate_content_id(page_text, 'text', page_number)
                     
                     # Save to ChromaDB
-                    self.save_to_chromadb(page_text, text_embedding, text_metadata, text_id)
+                    self.save_to_chromadb(page_text, text_embedding, text_metadata, text_id, 'text')
                     result['saved_items'].append({'type': 'text', 'id': text_id})
         
         # Extract images from page
@@ -194,15 +235,27 @@ class PageContentExtractor:
                     xref = img[0]
                     pix = fitz.Pixmap(page.parent, xref)
                     
-                    # Convert to PIL Image
+                    # Convert to PIL Image with proper handling of different formats
                     if pix.n - pix.alpha < 4:  # GRAY or RGB
-                        img_data = pix.tobytes("ppm")
+                        # Convert pixmap to PIL Image
+                        img_data = pix.tobytes("png")  # Use PNG format to handle alpha properly
                         image = Image.open(io.BytesIO(img_data))
-                    else:  # CMYK: convert to RGB
+                    else:  # CMYK: convert to RGB first
                         pix1 = fitz.Pixmap(fitz.csRGB, pix)
-                        img_data = pix1.tobytes("ppm")
+                        img_data = pix1.tobytes("png")
                         image = Image.open(io.BytesIO(img_data))
                         pix1 = None
+                    
+                    # Convert to RGB if not already (removes alpha channel issues)
+                    if image.mode != 'RGB':
+                        # Handle different modes properly
+                        if image.mode == 'RGBA':
+                            # Create white background for transparent images
+                            background = Image.new('RGB', image.size, (255, 255, 255))
+                            background.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
+                            image = background
+                        else:
+                            image = image.convert('RGB')
                     
                     pix = None
                     
@@ -222,8 +275,13 @@ class PageContentExtractor:
                         })
                     
                     if save_to_db:
-                        # Generate image embedding
-                        image_embedding = self.generate_image_embedding(image)
+                        # For images, use OCR text for embedding to maintain consistency
+                        if image_text.strip():
+                            image_embedding = self.generate_text_embedding(image_text.strip())
+                        else:
+                            # Use a default description if no OCR text
+                            default_text = f"Image {img_index} from page {page_number}"
+                            image_embedding = self.generate_text_embedding(default_text)
                         
                         if image_embedding:
                             # Convert image to base64 for storage
@@ -249,7 +307,7 @@ class PageContentExtractor:
                             image_id = self.generate_content_id(content_for_storage, 'image', page_number, img_index)
                             
                             # Save to ChromaDB
-                            self.save_to_chromadb(content_for_storage, image_embedding, image_metadata, image_id)
+                            self.save_to_chromadb(content_for_storage, image_embedding, image_metadata, image_id, 'image')
                             result['saved_items'].append({'type': 'image', 'id': image_id, 'ocr_text': image_text.strip()})
                 
                 except Exception as e:
@@ -296,18 +354,19 @@ class PageContentExtractor:
             print(f"Processing PDF: {document_name} ({len(doc)} pages)")
             
             for page_num in range(len(doc)):
-                page = doc[page_num]
-                page_content = self.extract_page_content(
-                    page, 
-                    page_num + 1, 
-                    document_name,
-                    save_to_db
-                )
-                results.append(page_content)
-                
-                # Print progress
-                saved_count = len(page_content['saved_items'])
-                print(f"Processed page {page_num + 1}/{len(doc)} - Saved {saved_count} items to DB")
+                if(page_num == 4):
+                    page = doc[page_num]
+                    page_content = self.extract_page_content(
+                        page, 
+                        page_num + 1, 
+                        document_name,
+                        save_to_db
+                    )
+                    results.append(page_content)
+                    
+                    # Print progress
+                    saved_count = len(page_content['saved_items'])
+                    print(f"Processed page {page_num + 1}/{len(doc)} - Saved {saved_count} items to DB")
             
             doc.close()
             
@@ -337,6 +396,9 @@ class PageContentExtractor:
             
             if not query_embedding:
                 return {'error': 'Could not generate query embedding'}
+            
+            # Ensure query embedding has correct dimension
+            query_embedding = self.pad_or_truncate_embedding(query_embedding, self.text_embedding_dim)
             
             # Prepare where clause for filtering
             where_clause = {}
@@ -382,50 +444,10 @@ class PageContentExtractor:
                 'total_items': count,
                 'content_types': content_types,
                 'documents': documents,
-                'collection_name': self.collection_name
+                'collection_name': self.collection_name,
+                'text_embedding_dim': self.text_embedding_dim,
+                'image_embedding_dim': self.image_embedding_dim
             }
             
         except Exception as e:
             return {'error': f'Failed to get stats: {str(e)}'}
-
-# Example usage
-def main():
-    # Initialize the extractor with ChromaDB
-    extractor = PageContentExtractor(
-        languages=['en'],
-        chroma_db_path="./document_chroma_db",
-        collection_name="pdf_content"
-    )
-    
-    # Process a PDF file
-    pdf_path = "your_document.pdf"  # Replace with your PDF path
-    if os.path.exists(pdf_path):
-        results = extractor.process_pdf_file(pdf_path, save_to_db=True)
-        
-        print("\n" + "="*60)
-        print("PROCESSING SUMMARY")
-        print("="*60)
-        
-        total_saved = sum(len(result['saved_items']) for result in results)
-        print(f"Total items saved to ChromaDB: {total_saved}")
-        
-        # Show collection statistics
-        stats = extractor.get_collection_stats()
-        print(f"Collection stats: {stats}")
-        
-        # Example search
-        print("\n" + "="*60)
-        print("SEARCH EXAMPLE")
-        print("="*60)
-        
-        search_results = extractor.search_similar_content("your search query here", n_results=3)
-        if 'error' not in search_results:
-            print(f"Found {search_results['count']} similar items")
-            for i, doc in enumerate(search_results['results']['documents'][0]):
-                metadata = search_results['results']['metadatas'][0][i]
-                print(f"{i+1}. {metadata['content_type']} from page {metadata['page_number']}")
-                print(f"   Preview: {doc[:100]}...")
-                print()
-
-if __name__ == "__main__":
-    main()
